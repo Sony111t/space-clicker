@@ -1,0 +1,56 @@
+name: Build APK
+
+on:
+  workflow_dispatch: # Позволяет запускать сборку кнопкой
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-packages: 'Cython==0.29.33'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git zip unzip openjdk-17-jdk signfile autoconf libtool pkg-config zlib1g-dev libncurses5-dev libsqlite3-dev libgdbm-dev libssl-dev libffi-dev cmake idxconvert
+        pip install --upgrade pip
+        pip install buildozer kivy pillow
+
+    - name: Unzip game files
+      run: |
+        unzip game.zip -d .
+
+    - name: Create Buildozer Spec
+      run: |
+        cat <<EOT > buildozer.spec
+        [app]
+        title = Space Clicker
+        package.name = spaceclicker
+        package.domain = org.logic
+        source.dir = .
+        source.include_exts = py,png,jpg,jpeg,ttf,ogg,mp3,json
+        version = 1.0
+        orientation = portrait
+        requirements = python3,kivy,pillow
+        fullscreen = 1
+        android.archs = arm64-v8a, armeabi-v7a
+        android.allow_backup = True
+        EOT
+
+    - name: Build with Buildozer
+      run: |
+        YES=1 buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SpaceClicker-APK
+        path: bin/*.apk
+        
